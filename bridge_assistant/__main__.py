@@ -1,6 +1,5 @@
-from .app import main
+from .auto_runner import main
 
 
 if __name__ == "__main__":
-    main()
-
+    raise SystemExit(main())

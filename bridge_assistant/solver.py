@@ -7,7 +7,14 @@ from scipy.optimize import Bounds, LinearConstraint, milp
 from scipy.sparse import lil_matrix
 
 from .graph import crossing_pairs
-from .model import Puzzle, Solution, SolveError
+from .model import BorderHint, BorderHintType, Puzzle, Solution, SolveError
+
+
+def _border_hint_type(border_hint: BorderHint) -> BorderHintType:
+    try:
+        return BorderHintType(border_hint.type)
+    except (TypeError, ValueError) as error:
+        raise SolveError(f"Unsupported border hint type: {border_hint.type!r}") from error
 
 
 def _validate_input(puzzle: Puzzle) -> None:
@@ -15,8 +22,16 @@ def _validate_input(puzzle: Puzzle) -> None:
         raise SolveError("At least two islands are required")
     if any(not 1 <= island.value <= 8 for island in puzzle.islands):
         raise SolveError("Island values must be between 1 and 8")
+    island_ids = {island.id for island in puzzle.islands}
+    if len(island_ids) != len(puzzle.islands):
+        raise SolveError("Island ids must be unique")
+    edge_ids = {edge.id for edge in puzzle.edges}
+    if edge_ids != set(range(len(puzzle.edges))):
+        raise SolveError("Edge ids must be contiguous from zero")
     incident = {island.id: 0 for island in puzzle.islands}
     for edge in puzzle.edges:
+        if edge.a not in island_ids or edge.b not in island_ids:
+            raise SolveError(f"Edge {edge.id} references an unknown island")
         incident[edge.a] += 1
         incident[edge.b] += 1
     impossible = [
@@ -27,6 +42,23 @@ def _validate_input(puzzle: Puzzle) -> None:
     if impossible:
         joined = ", ".join(str(item + 1) for item in impossible)
         raise SolveError(f"Islands with impossible degree: {joined}")
+
+    for index, magic_link in enumerate(puzzle.magic_links):
+        if magic_link.edge_a == magic_link.edge_b:
+            raise SolveError(f"Magic link {index + 1} must reference two different edges")
+        if magic_link.edge_a not in edge_ids or magic_link.edge_b not in edge_ids:
+            raise SolveError(f"Magic link {index + 1} references an unknown edge")
+
+    for index, border_hint in enumerate(puzzle.border_hints):
+        if not border_hint.edge_ids:
+            raise SolveError(f"Border hint {index + 1} must reference at least one edge")
+        if len(set(border_hint.edge_ids)) != len(border_hint.edge_ids):
+            raise SolveError(f"Border hint {index + 1} contains duplicate edges")
+        if any(edge_id not in edge_ids for edge_id in border_hint.edge_ids):
+            raise SolveError(f"Border hint {index + 1} references an unknown edge")
+        if border_hint.hint < 0:
+            raise SolveError(f"Border hint {index + 1} cannot be negative")
+        _border_hint_type(border_hint)
 
 
 def solve(puzzle: Puzzle) -> Solution:
@@ -85,6 +117,30 @@ def solve(puzzle: Puzzle) -> Solution:
             1.0,
         )
 
+    for magic_link in puzzle.magic_links:
+        add(
+            {
+                bridge_offset + magic_link.edge_a: 1.0,
+                bridge_offset + magic_link.edge_b: -1.0,
+            },
+            0.0,
+            0.0,
+        )
+
+    for border_hint in puzzle.border_hints:
+        coefficients = {
+            bridge_offset + edge_id: 1.0
+            for edge_id in border_hint.edge_ids
+        }
+        hint = float(border_hint.hint)
+        hint_type = _border_hint_type(border_hint)
+        if hint_type == BorderHintType.EQ:
+            add(coefficients, hint, hint)
+        elif hint_type == BorderHintType.GTE:
+            add(coefficients, hint, np.inf)
+        else:
+            add(coefficients, -np.inf, hint)
+
     root_id = islands[0].id
     for island in islands:
         coefficients: dict[int, float] = {}
@@ -134,6 +190,7 @@ def solve(puzzle: Puzzle) -> Solution:
 
 
 def validate_solution(puzzle: Puzzle, solution: Solution) -> None:
+    _validate_input(puzzle)
     by_island = {island.id: 0 for island in puzzle.islands}
     for edge in puzzle.edges:
         count = solution.bridges.get(edge.id, 0)
@@ -148,6 +205,27 @@ def validate_solution(puzzle: Puzzle, solution: Solution) -> None:
     for first, second in crossing_pairs(puzzle):
         if solution.bridges.get(first, 0) and solution.bridges.get(second, 0):
             raise SolveError("The solution contains crossing bridges")
+
+    for index, magic_link in enumerate(puzzle.magic_links):
+        first = solution.bridges.get(magic_link.edge_a, 0)
+        second = solution.bridges.get(magic_link.edge_b, 0)
+        if first != second:
+            raise SolveError(f"Magic link {index + 1} does not have equal bridge counts")
+
+    for index, border_hint in enumerate(puzzle.border_hints):
+        total = sum(solution.bridges.get(edge_id, 0) for edge_id in border_hint.edge_ids)
+        hint_type = _border_hint_type(border_hint)
+        if hint_type == BorderHintType.EQ:
+            satisfied = total == border_hint.hint
+        elif hint_type == BorderHintType.GTE:
+            satisfied = total >= border_hint.hint
+        else:
+            satisfied = total <= border_hint.hint
+        if not satisfied:
+            raise SolveError(
+                f"Border hint {index + 1} is not satisfied "
+                f"(sum {total}, {hint_type.name} {border_hint.hint})"
+            )
 
     adjacency: dict[int, list[int]] = {island.id: [] for island in puzzle.islands}
     for edge in puzzle.edges:

@@ -257,7 +257,7 @@ def test_unconfirmed_operation_stops_instead_of_advancing() -> None:
     assert [call[0] for call in driver.calls].count("mouseDown") == 2
 
 
-def test_default_retry_limit_is_fifty_additional_clicks() -> None:
+def test_default_retry_limit_stops_without_an_additional_click() -> None:
     puzzle = fixture_puzzle()
     actions = build_mouse_actions(puzzle, Solution({0: 1}), ScreenRegion(0, 0, 100, 100))
     driver = FakeDriver()
@@ -271,6 +271,6 @@ def test_default_retry_limit_is_fifty_additional_clicks() -> None:
             operation_confirmed=lambda _action: False,
             prepare_retry=lambda _action, attempt: retries.append(attempt),
         )
-    assert DEFAULT_MAX_RETRIES == 50
-    assert retries == list(range(1, 51))
-    assert [call[0] for call in driver.calls].count("click") == 51
+    assert DEFAULT_MAX_RETRIES == 0
+    assert retries == []
+    assert [call[0] for call in driver.calls].count("click") == 1

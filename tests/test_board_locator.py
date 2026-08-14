@@ -6,8 +6,8 @@ import cv2
 import numpy as np
 import pytest
 
-from bridge_assistant.board_locator import locate_board
-from bridge_assistant.model import RecognitionError, SolveError
+from bridge_assistant.board_locator import _aligned_components, locate_board
+from bridge_assistant.model import Island, RecognitionError, SolveError
 from bridge_assistant.solver import solve
 
 
@@ -82,6 +82,33 @@ def test_locator_ignores_circled_number_controls() -> None:
     assert located.region.left > 300
 
 
+def test_aligned_small_circles_are_not_merged_into_large_board() -> None:
+    islands = [
+        Island(0, 100, 100, 1, 50),
+        Island(1, 300, 100, 2, 50),
+        Island(2, 100, 300, 2, 50),
+        Island(3, 300, 300, 1, 50),
+        Island(4, 500, 100, 5, 5),
+        Island(5, 520, 100, 5, 5),
+    ]
+
+    components = _aligned_components(islands)
+
+    assert {item.id for item in max(components, key=len)} == {0, 1, 2, 3}
+
+
+def test_small_circle_does_not_split_two_compatible_islands() -> None:
+    islands = [
+        Island(0, 100, 100, 1, 50),
+        Island(1, 200, 100, 5, 5),
+        Island(2, 300, 100, 1, 50),
+    ]
+
+    components = _aligned_components(islands)
+
+    assert [{item.id for item in component} for component in components] == [{0, 2}]
+
+
 def test_locate_small_board_in_4k_client_area() -> None:
     board = cv2.resize(fixture_board(), None, fx=0.55, fy=0.55, interpolation=cv2.INTER_AREA)
     located = locate_board(embed_board(board, width=3840, height=2160, left=2730, top=1510))
@@ -126,6 +153,8 @@ def test_no_board_requests_region_fallback() -> None:
 )
 def test_locate_large_real_board_in_client_area(filename: str) -> None:
     path = Path(__file__).parents[1] / "test_image" / filename
+    if not path.is_file():
+        pytest.skip("local visual regression image is not present")
     board = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_COLOR)
     image = np.full((board.shape[0] + 140, board.shape[1] + 260, 3), 242, dtype=np.uint8)
     image[80 : 80 + board.shape[0], 150 : 150 + board.shape[1]] = board

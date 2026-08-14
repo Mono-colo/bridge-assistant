@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, IntEnum
 
 import numpy as np
 
@@ -55,11 +55,32 @@ class Edge:
     orientation: str
 
 
+class BorderHintType(IntEnum):
+    EQ = 0
+    GTE = 1
+    LTE = 2
+
+
+@dataclass(frozen=True, slots=True)
+class MagicLink:
+    edge_a: int
+    edge_b: int
+
+
+@dataclass(frozen=True, slots=True)
+class BorderHint:
+    edge_ids: tuple[int, ...]
+    hint: int
+    type: BorderHintType = BorderHintType.EQ
+
+
 @dataclass(slots=True)
 class Puzzle:
     islands: list[Island]
     edges: list[Edge] = field(default_factory=list)
     alignment_tolerance: float = 0.0
+    magic_links: list[MagicLink] = field(default_factory=list)
+    border_hints: list[BorderHint] = field(default_factory=list)
 
 
 @dataclass(slots=True)

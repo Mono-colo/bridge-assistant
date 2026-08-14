@@ -9,15 +9,15 @@ description = "Screen-based Hashi puzzle recognizer, solver, and mouse operator"
 requires-python = ">=3.10"
 dependencies = [
   "numpy>=1.24,<3",
-  "opencv-python>=4.8",
+  "opencv-python>=4.8,<5",
   "Pillow>=10",
   "pyautogui>=0.9.54",
   "scipy>=1.11",
+  "UnityPy>=1.20,<2",
 ]
 
 [project.scripts]
-bridge-assistant = "bridge_assistant.app:main"
+bridge-assistant = "bridge_assistant.auto_runner:main"
 
 [tool.setuptools.packages.find]
 include = ["bridge_assistant*"]
-

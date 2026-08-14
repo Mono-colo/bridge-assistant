@@ -212,11 +212,18 @@ def _aligned_size_components(islands: list[Island]) -> list[list[Island]]:
     for group, axis in ((row_groups, "x"), (column_groups, "y")):
         for indices in group:
             ordered = sorted(indices, key=lambda item: getattr(islands[item], axis))
-            for first, second in zip(ordered, ordered[1:]):
-                if getattr(islands[second], axis) - getattr(islands[first], axis) > maximum_gap:
-                    continue
-                adjacency[first].add(second)
-                adjacency[second].add(first)
+            for position, first in enumerate(ordered):
+                for second in ordered[position + 1 :]:
+                    radius_ratio = islands[second].radius / max(1.0, islands[first].radius)
+                    if not 0.62 <= radius_ratio <= 1.62:
+                        continue
+                    if (
+                        getattr(islands[second], axis) - getattr(islands[first], axis)
+                        <= maximum_gap
+                    ):
+                        adjacency[first].add(second)
+                        adjacency[second].add(first)
+                    break
 
     groups: list[list[Island]] = []
     unseen = set(range(len(islands)))

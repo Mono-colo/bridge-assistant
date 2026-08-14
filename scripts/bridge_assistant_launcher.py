@@ -1,9 +1,15 @@
 import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import cv2
 import numpy as np
 
-from bridge_assistant.app import main
+from bridge_assistant.auto_runner import main
+from bridge_assistant.game_library import load_game_library
 from bridge_assistant.graph import build_puzzle
 from bridge_assistant.solver import solve
 from bridge_assistant.vision import recognize
@@ -30,10 +36,13 @@ def self_test() -> None:
     if len(puzzle.islands) != 4 or solution.active_count != 4:
         raise RuntimeError("Bundled recognition or solver self-test failed")
     list_app_windows()
+    library = load_game_library()
+    if len(library.puzzles) != 5000:
+        raise RuntimeError("Bundled BridgeFix library adapter self-test failed")
 
 
 if __name__ == "__main__":
     if "--self-test" in sys.argv:
         self_test()
     else:
-        main()
+        raise SystemExit(main())

@@ -12,7 +12,7 @@ import pyautogui
 from .model import Edge, InputMode, Island, MouseAction, MouseInputError, Puzzle, ScreenRegion, Solution
 
 
-DEFAULT_MAX_RETRIES = 50
+DEFAULT_MAX_RETRIES = 0
 
 
 def _point_segment_distance(

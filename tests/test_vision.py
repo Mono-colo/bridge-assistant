@@ -210,6 +210,8 @@ def test_recognize_large_small_font_boards(
     bridge_count: int,
 ) -> None:
     fixture = Path(__file__).parents[1] / "test_image" / filename
+    if not fixture.is_file():
+        pytest.skip("local visual regression image is not present")
     image = cv2.imdecode(np.fromfile(fixture, dtype=np.uint8), cv2.IMREAD_COLOR)
     recognition = recognize(image)
     assert len(recognition.islands) == len(values) == 60
@@ -232,6 +234,8 @@ def test_recognize_large_small_font_boards(
 )
 def test_recognize_circle_and_digit_under_image_degradation(filename: str) -> None:
     fixture = Path(__file__).parents[1] / "test_image" / filename
+    if not fixture.is_file():
+        pytest.skip("local visual regression image is not present")
     image = cv2.imdecode(np.fromfile(fixture, dtype=np.uint8), cv2.IMREAD_COLOR)
     reference = recognize(image).islands
 
@@ -249,6 +253,8 @@ def test_recognize_circle_and_digit_under_image_degradation(filename: str) -> No
 
 def test_recognize_and_build_actions_for_midpoint_fallback_board() -> None:
     fixture = Path(__file__).parents[1] / "test_image" / "4.png"
+    if not fixture.is_file():
+        pytest.skip("local visual regression image is not present")
     image = cv2.imdecode(np.fromfile(fixture, dtype=np.uint8), cv2.IMREAD_COLOR)
     recognition = recognize(image)
     assert len(recognition.islands) == 60
