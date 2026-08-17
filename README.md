@@ -8,7 +8,7 @@
 - 标准数桥规则：岛屿度数、最多双桥、禁止交叉和全图连通。
 - `MagicLink`：两条指定连接桥数相等；游戏会同步另一条连接，自动器只操作一个代表边。
 - `BorderHint`：指定整行或整列的桥数总和满足 `=`、`>=` 或 `<=`。
-- 完成当前难度后，根据游戏的 `solved.dat` 进度切换到下一未完成难度。
+- 完成当前难度后，仅在难度菜单画面明确显示 `100.0%` 时切换到下一未完成难度。
 
 题库通过 `UnityPy` 在运行时读取游戏自身的 `resources.assets`。项目不会复制或修改游戏题库。
 
@@ -30,7 +30,7 @@ python -m pip install -r requirements.txt
 dist\bridge_assistant.exe
 ```
 
-也可以在 PowerShell 中给 EXE 传入下文相同的 `--once`、`--levels`、`--difficulty`、`--resources-path` 或 `--manual` 参数。
+也可以在 PowerShell 中给 EXE 传入下文相同的 `--once`、`--levels`、`--difficulty`、`--resources-path`、`--log-dir` 或 `--manual` 参数。
 
 默认持续自动过关：
 
@@ -46,7 +46,7 @@ python -m bridge_assistant
 # 解一题，确认胜利并进入下一题后退出
 python -m bridge_assistant --once
 
-# 连续解 3 题
+# 新完成 3 题；启动时恢复的已有胜利页不计入数量
 python -m bridge_assistant --levels 3
 
 # 切到指定难度并连续解 3 题
@@ -55,11 +55,16 @@ python -m bridge_assistant --levels 3 --difficulty VERY_EASY_TRICKY
 # 显式指定游戏目录、可执行文件或 resources.assets
 python -m bridge_assistant --once --resources-path "C:\Program Files (x86)\Steam\steamapps\common\BridgeFix 231"
 
+# 覆盖持久日志目录
+python -m bridge_assistant --levels 3 --log-dir "D:\BridgeAssistantLogs"
+
 # 打开旧的手动识别 GUI
 python -m bridge_assistant --manual
 ```
 
-运行中按 `Esc` 可停止。`pyautogui` 的左上角故障保护也保持启用。
+显式指定 `--log-dir` 时，运行日志和 `last-run.json` 都保存在该目录中。
+
+运行中按 `Esc` 可停止。`pyautogui` 的左上角故障保护也保持启用。同一用户只能运行一个自动过关实例，重复启动会立即退出，避免多个进程争抢鼠标。默认日志写入 `%LOCALAPPDATA%\BridgeAssistant\runs`，保留最近 10 次运行；`%LOCALAPPDATA%\BridgeAssistant\last-run.json` 始终记录最近一次运行的状态、题号、计数和错误。等待期间每 5 秒记录一次心跳，因此双击 EXE 后即使窗口关闭也能查到退出原因。
 
 ## 自动流程
 
@@ -71,8 +76,9 @@ python -m bridge_assistant --manual
 4. 对所有候选走廊右键清零；MagicLink 联通组只清理一个代表边。
 5. 对答案中的每条代表边左键精确点击 1 或 2 次，并逐次检查桥走廊变化。
 6. 任一输入未确认时停止本轮，整题清零后重试；每题最多尝试 3 轮，不会追加左键盲重试。
-7. 通过 `solved.dat` 新增题号确认胜利；已有胜利画面也能在重启后恢复。
-8. 胜利后只点击一次 Next，至少等待 1.5 秒，并确认题号或布局已经变化。
+7. 仅通过游戏自己的 `solved.dat` 新增当前题号确认新胜利；普通按钮亮度不会被当作胜利，恢复的已有胜利页也不会增加完成计数。
+8. 胜利后点击 Next，至少等待 1.5 秒并确认题号或布局变化；只有旧题身份不变且非 Next 动画区域连续稳定至少 0.75 秒才允许重试，最多点击 3 次。
+9. 每题胜利后打开难度菜单读取画面百分比；只有当前难度明确显示 `100.0%` 才切到菜单中下一项未满难度，否则返回关卡并点击原生 Next。
 
 窗口尺寸或 DPI 变化后，每道新题都会重新采集和计算坐标。自动器依赖屏幕上的实际像素和系统鼠标，因此置顶遮挡、独占全屏、UAC 安全桌面或权限不一致会导致安全停止。
 
@@ -85,7 +91,7 @@ python scripts/bridge_assistant_launcher.py --self-test
 dist\bridge_assistant.exe --self-test
 ```
 
-测试覆盖视觉定位、题库解析和布局匹配、标准及 Tricky 约束求解、MagicLink 操作去重、有限整题重试、胜利恢复、单次 Next 和窗口坐标映射。
+测试覆盖视觉定位、题库解析和布局匹配、标准及 Tricky 约束求解、MagicLink 操作去重、有限整题重试、精确进度差集、胜利恢复、Next 有界重试、持久日志和窗口坐标映射。
 
 ## 构建
 

@@ -254,7 +254,13 @@ def _crop_region(image: np.ndarray, islands: list[Island]) -> ScreenRegion:
 
 
 def _matches_localization(recognized: list[Island], localized: list[Island], region: ScreenRegion) -> bool:
-    if len(recognized) != len(localized):
+    # The coarse full-client scan can miss a few islands whose rings overlap
+    # Tricky hint boxes, or treat the hint decoration as an island. The tighter
+    # crop usually recovers the real set, so tolerate a small symmetric count
+    # difference while requiring the smaller set to align one-to-one.
+    larger_count = max(len(recognized), len(localized))
+    allowed_difference = max(2, (larger_count + 9) // 10)
+    if abs(len(recognized) - len(localized)) > allowed_difference:
         return False
     expected_points = np.asarray(
         [[item.x - region.left, item.y - region.top] for item in localized],
@@ -263,6 +269,8 @@ def _matches_localization(recognized: list[Island], localized: list[Island], reg
     actual_points = np.asarray([[item.x, item.y] for item in recognized], dtype=float)
     distances = np.linalg.norm(expected_points[:, None, :] - actual_points[None, :, :], axis=2)
     expected_indices, actual_indices = linear_sum_assignment(distances)
+    if len(expected_indices) != min(len(localized), len(recognized)):
+        return False
     for expected_index, actual_index in zip(expected_indices, actual_indices):
         expected = localized[expected_index]
         actual = recognized[actual_index]

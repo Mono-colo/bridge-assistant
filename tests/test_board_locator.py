@@ -6,8 +6,8 @@ import cv2
 import numpy as np
 import pytest
 
-from bridge_assistant.board_locator import _aligned_components, locate_board
-from bridge_assistant.model import Island, RecognitionError, SolveError
+from bridge_assistant.board_locator import _aligned_components, _matches_localization, locate_board
+from bridge_assistant.model import Island, RecognitionError, ScreenRegion, SolveError
 from bridge_assistant.solver import solve
 
 
@@ -107,6 +107,50 @@ def test_small_circle_does_not_split_two_compatible_islands() -> None:
     components = _aligned_components(islands)
 
     assert [{item.id for item in component} for component in components] == [{0, 2}]
+
+
+def test_localization_allows_precise_crop_to_recover_a_missing_island() -> None:
+    region = ScreenRegion(80, 40, 400, 300)
+    localized = [
+        Island(0, 100, 100, 1, 12),
+        Island(1, 300, 100, 2, 12),
+    ]
+    recognized = [
+        Island(0, 20, 60, 1, 12),
+        Island(1, 220, 60, 2, 12),
+        Island(2, 120, 180, 3, 12),
+    ]
+
+    assert _matches_localization(recognized, localized, region)
+
+
+def test_localization_allows_coarse_scan_to_include_a_false_island() -> None:
+    region = ScreenRegion(80, 40, 400, 300)
+    localized = [
+        Island(0, 100, 100, 1, 12),
+        Island(1, 300, 100, 2, 12),
+        Island(2, 200, 220, 3, 12),
+    ]
+    recognized = [
+        Island(0, 20, 60, 1, 12),
+        Island(1, 220, 60, 2, 12),
+    ]
+
+    assert _matches_localization(recognized, localized, region)
+
+
+def test_localization_rejects_too_many_unmatched_islands() -> None:
+    region = ScreenRegion(0, 0, 500, 300)
+    localized = [
+        Island(index, 40 + index * 70, 80, 1, 12)
+        for index in range(6)
+    ]
+    recognized = [
+        Island(0, 40, 80, 1, 12),
+        Island(1, 110, 80, 1, 12),
+    ]
+
+    assert not _matches_localization(recognized, localized, region)
 
 
 def test_locate_small_board_in_4k_client_area() -> None:
