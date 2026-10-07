@@ -1,6 +1,16 @@
 # BridgeFix 231 自动过关器
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 这是一个 Windows 本地自动器。启动后，它会寻找正在运行的 `BridgeFix 231`，识别当前题面，与游戏安装目录中的内置题库匹配，输入答案并进入下一题。默认模式不需要手动选择窗口、采集、识别或点击“求解”。
+
+## 声明与免责
+
+- 本项目开源，面向个人学习、研究与技术交流。**代码部分的使用条款以 [MIT License](LICENSE) 为准。**
+- 所有题库数据均在运行时从**使用者本地已安装的游戏文件**（`resources.assets`）中读取。**本仓库不包含、不复制、不分发任何游戏资源、题库、美术素材或游戏本体。**
+- 本项目与游戏开发商、发行商及 Steam 不存在任何关联，未获得其授权、认可或赞助。游戏中出现的所有名称、商标与内容，版权均归其各自权利人所有。
+- 自动化操作可能违反游戏的用户协议（EULA）与服务条款，并可能导致账号受限或封禁。请在使用前自行确认相关条款并评估风险，一切后果由使用者自行承担。
+- 软件按“原样”提供，不附带任何形式的明示或默示担保。
 
 ## 支持范围
 
@@ -107,3 +117,7 @@ powershell -File scripts\build_release.ps1
 ```powershell
 python scripts/run_desktop_e2e.py
 ```
+
+## 许可证
+
+本项目基于 [MIT License](LICENSE) 开源。
